@@ -186,6 +186,7 @@ class GPUStat(object):
                  show_power=None,
                  gpuname_width=16,
                  term=None,
+                 show_pmemory=False,
                  ):
         if term is None:
             term = Terminal(stream=sys.stdout)
@@ -231,6 +232,8 @@ class GPUStat(object):
         )
         colors['CPowL'] = term.magenta
         colors['CCmd'] = term.color(24)   # a bit dark
+        colors['PUser'] = term.turquoise
+        colors['PTime'] = term.aquamarine4
 
         if not with_colors:
             for k in list(colors.keys()):
@@ -286,15 +289,27 @@ class GPUStat(object):
             if show_cmd:
                 if r:
                     r += ':'
-                r += "{C1}{}{C0}".format(
-                    _repr(p.get('command', p['pid']), '--'), **colors
-                )
+                com = _repr(p.get('command', p['pid']), '--')
+                if "@" in com:
+                    letters = com[1:3]
+                    rest, tleft = com[3:].split("#")
+                    r += "{PUser}{}{C1}{}{PTime}({}){C0}".format(letters,
+                        rest, tleft, **colors
+                    )
+                else:
+                    r += "{C1}{}{C0}".format(com
+                        , **colors
+                    )
+
 
             if show_pid:
                 r += ("/%s" % _repr(p['pid'], '--'))
-            r += '({CMemP}{}M{C0})'.format(
-                _repr(p['gpu_memory_usage'], '?'), **colors
-            )
+            if show_pmemory:
+                r += '({CMemP}{}M{C0})'.format(
+                    _repr(p['gpu_memory_usage'], '?'), **colors
+                )
+            else:
+                r += ' :'
             return r
 
         def full_process_info(p):
@@ -557,7 +572,7 @@ class GPUStatCollection(object):
                         show_pid=False, show_fan_speed=None,
                         show_codec="", show_power=None,
                         gpuname_width=16, show_header=True,
-                        eol_char=os.linesep,
+                        eol_char=os.linesep, show_pmemory=False
                         ):
         # ANSI color configuration
         if force_color and no_color:
@@ -614,7 +629,8 @@ class GPUStatCollection(object):
                        show_codec=show_codec,
                        show_power=show_power,
                        gpuname_width=gpuname_width,
-                       term=t_color)
+                       term=t_color,
+                       show_pmemory=show_pmemory)
             fp.write(eol_char)
 
         fp.flush()
